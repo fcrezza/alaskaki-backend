@@ -3,10 +3,20 @@
     "es6": true,
     "node": true
   },
-  "extends": ["eslint:recommended", "plugin:node/recommended", "prettier"],
+  "extends": ["eslint:recommended", "plugin:node/recommended-module", "prettier"],
   "parserOptions": {
     "ecmaVersion": 6,
     "sourceType": "module"
   },
-  "rules": {}
+  "rules": {
+    "no-unused-vars": [
+      "error",
+      {
+        "vars": "all",
+        "args": "all",
+        "ignoreRestSiblings": false,
+        "argsIgnorePattern": "[req, res]"
+      }
+    ]
+  }
 }

@@ -1,15 +1,34 @@
-import app from "./app";
-import http from "http";
+import express from "express";
+import "express-async-errors";
+import cors from "cors";
+import cookieParser from "cookie-parser";
+// import config from "config";
+// import morgan from "morgan";
+/* eslint-disable-next-line */
+import bodyParser from "body-parser";
+import routes from "./routes";
+import errorMiddleware from "./middleware/errormiddleware";
+
+const app = express();
+
+app.use(
+  cors({
+    credentials: true,
+    origin: ["http://localhost:3000"]
+  })
+);
+app.use(bodyParser.json());
+app.use(cookieParser());
+// app.use(morgan("dev"));
+
+// this is our routes
+app.use(routes);
+
+// centralized error handling
+app.use(errorMiddleware);
 
 const port = process.env.PORT || 8080;
-app.set("port", port);
 
-const server = http.createServer(app);
-server.listen(port);
-server.on("listening", onListening);
-
-function onListening() {
-  var addr = server.address();
-  var bind = typeof addr === "string" ? addr : addr.port;
-  console.log(`server listen on port ${bind}`);
-}
+app.listen(port, () => {
+  console.log(`App listen at port ${port}`);
+});
