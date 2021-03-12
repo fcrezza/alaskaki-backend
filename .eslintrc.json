@@ -1,11 +1,11 @@
 {
   "env": {
-    "es6": true,
+    "es2021": true,
     "node": true
   },
   "extends": ["eslint:recommended", "plugin:node/recommended-module", "prettier"],
   "parserOptions": {
-    "ecmaVersion": 6,
+    "ecmaVersion": 12,
     "sourceType": "module"
   },
   "rules": {
