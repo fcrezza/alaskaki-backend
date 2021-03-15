@@ -1,24 +1,36 @@
 import express from "express";
 import "express-async-errors";
 import cors from "cors";
-import cookieParser from "cookie-parser";
 // import config from "config";
 // import morgan from "morgan";
 /* eslint-disable-next-line */
 import bodyParser from "body-parser";
+import session from "express-session";
+import MongoStore from "connect-mongo";
+
 import routes from "./routes";
+import service from "./services/main";
 import errorMiddleware from "./middleware/errormiddleware";
 
 const app = express();
+const mongodbClient = service.init();
 
+app.use(cors({credentials: true, origin: ["http://localhost:3000"]}));
+app.use(bodyParser.json());
 app.use(
-  cors({
-    credentials: true,
-    origin: ["http://localhost:3000"]
+  session({
+    cookie: {
+      // 30 days
+      maxAge: 30 * 24 * 60 * 60 * 1000,
+      secure: "auto"
+    },
+    name: "session",
+    saveUninitialized: false,
+    resave: false,
+    secret: process.env.SESSION_SECRET,
+    store: MongoStore.create({clientPromise: mongodbClient, dbName: "alaskaki"})
   })
 );
-app.use(bodyParser.json());
-app.use(cookieParser());
 // app.use(morgan("dev"));
 
 // this is our routes

@@ -10,8 +10,16 @@ import {
 import {getUser, insertUser} from "../services/user";
 import User from "../model/user";
 
-export function getAuthenticatedUser(request, response) {
-  // response.send("this authenticated user route");
+export async function getAuthenticatedUser(request, response) {
+  const {user} = request.session;
+
+  if (!user) {
+    return response.json(null);
+  }
+
+  const userData = await getUser({_id: user.id});
+  delete userData.password;
+  response.json({userData});
 }
 
 export async function localLogin(request, response) {
@@ -46,11 +54,21 @@ export async function localLogin(request, response) {
     );
   }
 
+  if (user.type === "Google") {
+    throw new HTTPForbiddenError("Akun ini login menggunakan akun google anda");
+  }
+
   const matchPassword = await bcrypt.compare(input.password, user.password);
 
   if (!matchPassword) {
     throw new HTTPForbiddenError("Kombinasi password dan email tidak cocok");
   }
+
+  request.session.user = {
+    id: user._id
+  };
+
+  delete user.password;
 
   response.json(user);
 }
@@ -99,7 +117,7 @@ export async function signup(request, response) {
   input.password = validator.escape(input.password);
   input.address = validator.escape(input.address);
 
-  const user = await getUser({email: input.email});
+  let user = await getUser({email: input.email});
 
   if (user) {
     throw new HTTPForbiddenError("Email ini sudah digunakan oleh akun lain");
@@ -116,9 +134,23 @@ export async function signup(request, response) {
     type: "Local"
   });
 
-  response.json(await insertUser(newUser));
+  const insertedUser = await insertUser(newUser);
+
+  request.session.user = {
+    id: insertedUser.insertedId
+  };
+
+  user = {
+    id: insertedUser.insertedId,
+    ...insertedUser.ops[0]
+  };
+
+  delete user.password;
+  response.json(user);
 }
 
 export function logout(request, response) {
-  response.send("this logout route");
+  request.session.destroy();
+  response.clearCookie("session", {path: "/"});
+  response.end();
 }

@@ -6,8 +6,8 @@
     "node": ">=8.10.0"
   },
   "scripts": {
-    "start": "node dist",
-    "dev": "nodemon --exec babel-node --presets=@babel/preset-env -- src/index.js",
+    "start": "node -r dotenv/config dist",
+    "dev": "nodemon -r dotenv/config  --exec babel-node --presets=@babel/preset-env -- src/index.js",
     "build": "babel --delete-dir-on-start src/ --out-dir dist/ --presets=@babel/env",
     "lint": "eslint src",
     "format": "prettier --check --write \"!dist/*\" \"**/*.js\""
@@ -18,8 +18,9 @@
   "dependencies": {
     "bcrypt": "^5.0.1",
     "config": "^3.3.3",
-    "cookie-parser": "^1.4.5",
+    "connect-mongo": "^4.4.0",
     "cors": "^2.8.5",
+    "dotenv": "^8.2.0",
     "express": "^4.17.1",
     "express-async-errors": "^3.1.1",
     "express-session": "^1.17.1",

@@ -1,7 +1,13 @@
-import dbConnection from "../utils/dbconnection";
+import {ObjectId} from "mongodb";
+
+import service from "./main";
 
 export async function getUser(payload) {
-  const client = await dbConnection();
+  if ("_id" in payload) {
+    payload._id = ObjectId(payload._id);
+  }
+
+  const client = service.getClient();
   const database = client.db("alaskaki");
   const users = database.collection("users");
   const user = await users.findOne(payload);
@@ -9,7 +15,7 @@ export async function getUser(payload) {
 }
 
 export async function insertUser(payload) {
-  const client = await dbConnection();
+  const client = service.getClient();
   const database = client.db("alaskaki");
   const users = database.collection("users");
   const user = await users.insertOne(payload);
