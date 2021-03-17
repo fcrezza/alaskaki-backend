@@ -1,6 +1,9 @@
 import Joi from "joi";
 import bcrypt from "bcrypt";
 import validator from "validator";
+import {OAuth2Client} from "google-auth-library";
+import {v2 as cloudinary} from "cloudinary";
+import path from "path";
 
 import {
   HTTPBadRequestError,
@@ -18,8 +21,21 @@ export async function getAuthenticatedUser(request, response) {
   }
 
   const userData = await getUser({_id: user.id});
-  delete userData.password;
-  response.json({userData});
+
+  if (userData.password) {
+    delete userData.password;
+  }
+
+  const avatar = await cloudinary.api.resource(userData.avatar);
+  userData.avatar = avatar.secure_url;
+
+  request.session.regenerate(() => {
+    request.session.user = {
+      id: userData._id
+    };
+
+    response.json({userData});
+  });
 }
 
 export async function localLogin(request, response) {
@@ -68,12 +84,65 @@ export async function localLogin(request, response) {
     id: user._id
   };
 
+  const avatar = await cloudinary.api.resource(user.avatar);
+  user.avatar = avatar.secure_url;
   delete user.password;
 
   response.json(user);
 }
 
-export function googleLogin(request, response) {}
+export async function googleLogin(request, response) {
+  if (!request.body.token) {
+    throw new HTTPBadRequestError("Token tidak ditemukan");
+  }
+
+  const client = new OAuth2Client(process.env.CLIENT_ID);
+  const ticket = await client.verifyIdToken({
+    idToken: request.body.token,
+    audience: process.env.GOOGLE_OAUTH_CLIENT_ID
+  });
+
+  const {name, email} = ticket.getPayload();
+
+  let user = await getUser({email: email});
+
+  if (user && user.type !== "Google") {
+    throw new HTTPForbiddenError(
+      "Akun dengan email ini terhubung menggunakan login password"
+    );
+  }
+
+  if (user) {
+    request.session.user = {
+      id: user._id
+    };
+    const avatar = await cloudinary.api.resource(user.avatar);
+    user.avatar = avatar.secure_url;
+    return response.json(user);
+  }
+
+  const avatar = await cloudinary.uploader.upload(
+    // eslint-disable-next-line
+    path.join(__dirname, "../assets/default.png"),
+    {
+      folder: "alaskaki/users",
+      resource_type: "image"
+    }
+  );
+  const newUser = new User({
+    name,
+    email,
+    type: "Google",
+    avatar: avatar.public_id
+  });
+  await insertUser(newUser);
+  user = await getUser(newUser);
+  user.avatar = avatar.secure_url;
+  request.session.user = {
+    id: user._id
+  };
+  response.json(user);
+}
 
 export async function signup(request, response) {
   const inputValidation = Joi.object({
@@ -93,16 +162,6 @@ export async function signup(request, response) {
       "string.min": "Password minimal mengandung 8 karakter",
       "string.empty": "Password tidak boleh kosong",
       "any.required": "Password tidak boleh kosong"
-    }),
-    address: Joi.string().trim().required().messages({
-      "string.base": "Alamat yang dimasukan bukan valid string",
-      "string.empty": "Alamat tidak boleh kosong",
-      "any.required": "Alamat tidak boleh kosong"
-    }),
-    gender: Joi.string().valid("Male", "Female", "Other").required().messages({
-      "any.only": "Jenis kelamin tidak valid",
-      "string.empty": "Jenis kelamin tidak boleh kosong",
-      "any.required": "Jenis kelamin tidak boleh kosong"
     })
   });
 
@@ -115,7 +174,6 @@ export async function signup(request, response) {
   input.email = validator.escape(input.email);
   input.name = validator.escape(input.name);
   input.password = validator.escape(input.password);
-  input.address = validator.escape(input.address);
 
   let user = await getUser({email: input.email});
 
@@ -125,26 +183,29 @@ export async function signup(request, response) {
 
   const hashedPassword = await bcrypt.hash(input.password, 10);
 
+  const avatar = await cloudinary.uploader.upload(
+    // eslint-disable-next-line
+    path.join(__dirname, "../assets/default.png"),
+    {
+      folder: "alaskaki/users",
+      resource_type: "image"
+    }
+  );
+
   const newUser = new User({
     email: input.email,
     name: input.name,
     password: hashedPassword,
-    address: input.address,
-    gender: input.gender,
-    type: "Local"
+    type: "Local",
+    avatar: avatar.public_id
   });
 
-  const insertedUser = await insertUser(newUser);
-
+  await insertUser(newUser);
+  user = await getUser(newUser);
+  user.avatar = avatar.secure_url;
   request.session.user = {
-    id: insertedUser.insertedId
+    id: user._id
   };
-
-  user = {
-    id: insertedUser.insertedId,
-    ...insertedUser.ops[0]
-  };
-
   delete user.password;
   response.json(user);
 }
@@ -152,5 +213,5 @@ export async function signup(request, response) {
 export function logout(request, response) {
   request.session.destroy();
   response.clearCookie("session", {path: "/"});
-  response.end();
+  response.send("Sukses logout");
 }

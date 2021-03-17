@@ -12,7 +12,7 @@ const router = express.Router();
 
 router.get("/user", getAuthenticatedUser);
 router.post("/login/local", localLogin);
-router.post("/login/google-oauth", googleLogin);
+router.post("/login/google", googleLogin);
 router.post("/signup", signup);
 router.delete("/logout", logout);
 

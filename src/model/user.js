@@ -4,15 +4,9 @@ const User = new Model({
   name: String,
   email: String,
   password: [String],
-  gender: ["Male", "Female", "Other"],
-  address: String,
+  address: [String],
   type: ["Local", "Google"],
-  avatar: [
-    {
-      url: String,
-      publicId: Number
-    }
-  ]
+  avatar: String
 });
 
 export default User;
